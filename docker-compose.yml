@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # 🔐 Basic Auth
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-yourpassword}
+
+      # 🕒 Timezone
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Europe/London}
+      - TZ=${TZ:-Europe/London}
+
+      # 🔒 Enforce proper file permissions inside container
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+
+      # 🧠 Optional API keys (set via .env file)
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
+
+    volumes:
+      # Persist workflows, credentials, and executions
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
