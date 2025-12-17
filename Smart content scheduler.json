@@ -1,0 +1,404 @@
+{
+  "name": "Smart content scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "event": "pagedUpdatedInDatabase",
+        "databaseId": {
+          "__rl": true,
+          "value": "282fa5806d6480c18bf4f61277a5a472",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -272
+      ],
+      "id": "092540ac-d92f-4ee4-a9a0-1b73129fce08",
+      "name": "Notion Trigger",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "credentials": {
+        "notionApi": {
+          "id": "uELrJxnD397vbeiq",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0627136b-ca46-458e-b2d2-f375c906216a",
+              "name": "notionPageId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "02e53bba-084c-4d82-91c0-11ea29ae005c",
+              "name": "name",
+              "value": "={{ $json.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "078bc990-d9b9-43b1-ad10-87a5ff9d2394",
+              "name": "content",
+              "value": "={{ $json.Content }}",
+              "type": "string"
+            },
+            {
+              "id": "564d0326-4e57-4fbe-9f9d-57f3b0df0932",
+              "name": "status",
+              "value": "={{ $json.Status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        -272
+      ],
+      "id": "33150ca9-1537-4456-849b-306705606458",
+      "name": "Prepare"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a23eb516-d1ad-4f71-bd49-e29e2e4bca3b",
+              "name": "formatContent",
+              "value": "={{ $node[\"Prepare\"].json[\"content\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "9cb27c9c-2ea6-4764-8c75-c1d597a6eb59",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        -272
+      ],
+      "id": "8cd050bb-58bc-4936-b772-1500cf586202",
+      "name": "Format Content Prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28f2a84c-dea0-4cfb-8a05-3d140a4da060",
+              "name": "formatImage",
+              "value": "={{ $('Prepare').item.json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        -272
+      ],
+      "id": "a2a699aa-fae5-4644-9615-9b0d8b9ea1bb",
+      "name": "Format Image Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/v1/models/Tongyi-MAI/Z-Image-Turbo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "image/png"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": \"{{ $json.formatImage }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        -640
+      ],
+      "id": "d2f1e0f7-5512-4054-9fd2-9cb01668207e",
+      "name": "AI Image (Hugging Face)",
+      "alwaysOutputData": false,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "zkpm7qITGE3uY7Il",
+          "name": "Hugging Face Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "Raw/Custom",
+        "body": "={\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a professional LinkedIn copywriter. Improve the text to be engaging and natural.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.formatContent }}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 150\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        -272
+      ],
+      "id": "b907bc6c-b286-4942-86b1-9502acdc3d4f",
+      "name": "AI Content (OpenRouter)",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "v6B02qUp1WjQj8Yw",
+          "name": "Open router Bearer Auth Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "person": "NEEaDqniCt",
+        "text": "={{ $('AI Content (OpenRouter)').item.json.choices[0].message.content }}",
+        "additionalFields": {
+          "visibility": "PUBLIC"
+        }
+      },
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        -272
+      ],
+      "id": "65b5d8cf-77dc-4dce-b42d-7d9255db0883",
+      "name": "Create a post",
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "W4P4R0gd5XgORdOi",
+          "name": "LinkedIn account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{$node[\"Prepare\"].json[\"notionPageId\"]}}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Done"
+            },
+            {
+              "key": "LinkedIn url|url",
+              "urlValue": "={{ $json.urn }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        -272
+      ],
+      "id": "76351406-751e-4120-9a11-7bac8fd4e3a8",
+      "name": "Update a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "uELrJxnD397vbeiq",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "36a7151a-d5d4-4ebf-98b0-d866f70b4b6f",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "In progress",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        -272
+      ],
+      "id": "188176b7-202c-4afc-91ab-281cd34ac462",
+      "name": "Filter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Notion Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Format Content Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Content Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Content (OpenRouter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Content (OpenRouter)": {
+      "main": [
+        [
+          {
+            "node": "Format Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Image (Hugging Face)": {
+      "main": [
+        []
+      ]
+    },
+    "Create a post": {
+      "main": [
+        [
+          {
+            "node": "Update a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e1d860f5-d251-402d-99ac-11dd4ec48fdb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "39fec881d45a3d2070dbea03380a75cd70544376d6eb70244a2dfc5b35ae8ebd"
+  },
+  "id": "cZfyZCOzq6Ng7xha",
+  "tags": []
+}
